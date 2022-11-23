@@ -1,0 +1,10 @@
+{
+    "gameExecutable": "E:\\Games\\Warcraft III\\_retail_\\x86_64\\Warcraft III.exe",
+    "mapFolder": ".\\PJA_ProgrammableJassAITestMap.w3x",
+    "outputFolder": ".\\target.w3x",
+    "launchArgs": [
+        "-launch",
+        "-windowed",
+        "-nowfpause"
+    ]
+}
