@@ -5,16 +5,15 @@ real udg_PCJA_TargetY= 0
 
     // Generated
 trigger gg_trg_Melee_Initialization= null
+trigger gg_trg_PCJAFramework= null
 trigger gg_trg_PCJASendAttackGroundCommand= null
 trigger gg_trg_PCJASetConfig= null
-trigger gg_trg_PCJAFramework= null
-    //***StartGlobalInsert***
+    //***StartSharedGlobals***
 integer PCJA_COMMAND_START_TYPE= 10000
 integer PCJA_COMMAND_END_TYPE= 10001
 
 integer PCJA_COMMAND_TYPE_SET_CONFIG= 10002
 integer PCJA_COMMAND_TYPE_SET_HARVEST_GROUP= 10003
-
 
 
     //if true, is campaign AI, otherwise melee
@@ -80,11 +79,7 @@ integer PCJA_CONFIG_TYPE_SMART_ARTILLERY= 20013
     //Default: true
 integer PCJA_CONFIG_TYPE_GROUP_TIMED_LIFE= 20014
 
-    
-    //***StartGlobalInsert***
-    //***StartGlobalInsert***
-
-    //***StartGlobalInsert***
+    //***EndSharedGlobals***
 
 
 //JASSHelper struct globals:
@@ -119,13 +114,6 @@ endfunction
 //*  Custom Script Code
 //*
 //***************************************************************************
-//***************************************************************************
-//*  PCJASharedGlobals
-// BEGIN IMPORT OF E:\dev\repos\ProgrammableJassAI\ProgrammableCampaignJassAISharedGlobals.j
-// Globals shared with the AI script to handle communication
-
-// END IMPORT OF E:\dev\repos\ProgrammableJassAI\ProgrammableCampaignJassAISharedGlobals.j
-
 
 //***************************************************************************
 //*
@@ -1631,6 +1619,7 @@ endfunction
 // BEGIN IMPORT OF E:\dev\repos\ProgrammableJassAI\ProgrammableCampaignJassAIFramework.j
 
 
+//***StartSharedApi***
 function PCJA_B2I takes boolean b returns integer
     if b then
         return 1
@@ -1644,12 +1633,12 @@ function PCJA_I2B takes integer i returns boolean
     endif
     return false
 endfunction
+//***EndSharedApi***
 
 function PCJA_SetConfig takes player aiPlayer,integer configType,boolean value returns nothing
-    local integer intValue= PCJA_B2I(value)
     //Send AI Command
     call CommandAI(aiPlayer, PCJA_COMMAND_END_TYPE, PCJA_COMMAND_TYPE_SET_CONFIG)
-    call CommandAI(aiPlayer, configType, intValue)
+    call CommandAI(aiPlayer, configType, PCJA_B2I(value))
     call CommandAI(aiPlayer, PCJA_COMMAND_START_TYPE, PCJA_COMMAND_TYPE_SET_CONFIG)
 endfunction
 
@@ -1661,7 +1650,8 @@ function PCJA_DryRun takes nothing returns nothing
     call TriggerSleepAction(0.50)
     call BJDebugMsg("Send Configs")
     call PCJA_SetConfig(Player(1) , PCJA_CONFIG_TYPE_RANDOM_PATHS , true)
-    //call PCJA_SetConfig(Player(1), PCJA_CONFIG_TYPE_HEROES_BUY_ITEMS, false)
+    call PCJA_SetConfig(Player(1) , PCJA_CONFIG_TYPE_HEROES_BUY_ITEMS , false)
+    call PCJA_SetConfig(Player(1) , PCJA_CONFIG_TYPE_GROUPS_FLEE , false)
 endfunction
 
 // END IMPORT OF E:\dev\repos\ProgrammableJassAI\ProgrammableCampaignJassAIFramework.j
@@ -1669,6 +1659,7 @@ endfunction
 function Trig_PCJAFramework_Actions takes nothing returns nothing
     call PCJA_DryRun()
 endfunction
+
 
 //===========================================================================
 function InitTrig_PCJAFramework takes nothing returns nothing

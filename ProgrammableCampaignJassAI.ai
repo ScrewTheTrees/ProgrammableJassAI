@@ -4,6 +4,79 @@
 // 
 //===========================================================================
 globals
+    //***StartSharedGlobals***
+    integer PCJA_COMMAND_START_TYPE = 10000
+    integer PCJA_COMMAND_END_TYPE = 10001
+
+    integer PCJA_COMMAND_TYPE_SET_CONFIG = 10002
+    integer PCJA_COMMAND_TYPE_SET_HARVEST_GROUP = 10003
+
+
+    //if true, is campaign AI, otherwise melee
+    //Default: true
+    integer PCJA_CONFIG_TYPE_AI_IS_CAMPAIGN = 20000
+
+    //Defends allied players when they come under siege.
+    //Default: false
+    integer PCJA_CONFIG_TYPE_DEFEND_PLAYERS = 20001
+
+    //Takes different paths towards the enemy, aka attacking from different directions.
+    //Default: true
+    integer PCJA_CONFIG_TYPE_RANDOM_PATHS = 20002
+
+    //Prioritises targeting/killing heroes, not the most fun for campaign AI.
+    //Default: false
+    integer PCJA_CONFIG_TYPE_TARGET_HEROES = 20003
+
+    //Repair damaged buildings, otherwise they will let them be damaged.
+    //Default: true
+    integer PCJA_CONFIG_TYPE_PEONS_REPAIR = 20004
+
+    //Causes the hero to try to keep itself alive during combat.
+    //Default: false
+    integer PCJA_CONFIG_TYPE_HEROES_FLEE = 20005
+
+    //Causes the hero to try to keep itself alive during combat.
+    //Default: false
+    integer PCJA_CONFIG_TYPE_HEROES_BUY_ITEMS = 20006
+
+    //Causes units to try to keep themselves alive during combat.
+    //Default: false
+    integer PCJA_CONFIG_TYPE_UNITS_FLEE = 20007
+
+    //Causes the entire army to just flee when it feels like its losing.
+    //Default: false
+    integer PCJA_CONFIG_TYPE_GROUPS_FLEE = 20008
+
+    //Mega targets is for Melee AI and not used here
+    //Default: false
+    integer PCJA_CONFIG_TYPE_WATCH_MEGA_TARGETS = 20009
+
+    //Leave very damaged units at gathering point.
+    //Default: false
+    integer PCJA_CONFIG_TYPE_IGNORE_INJURED = 20010
+
+    //Heroes try to pick up items, can be abused slightly as AI cheat
+    //and run across the entire map to grab a creep camp drop you missed.
+    //Default: false
+    integer PCJA_CONFIG_TYPE_HEROES_TAKE_ITEMS = 20011
+
+    //Or slow gathering, reduces all the resources gained/taken to 1... makes the AI
+    //Barely earn any money, so other income sources is needed in that case.
+    //Default: false
+    integer PCJA_CONFIG_TYPE_SLOW_CHOPPING = 20012
+
+    //Artillery targets buildings or casters that are weak to their siege damage.
+    //Default: true
+    integer PCJA_CONFIG_TYPE_SMART_ARTILLERY = 20013
+
+    //Summoned units are grouped into the ai players assault force.
+    //Otherwise they just stand AFK where they were summoned.
+    //Default: true
+    integer PCJA_CONFIG_TYPE_GROUP_TIMED_LIFE = 20014
+
+    //***EndSharedGlobals***
+
     integer pretendGold = 0
     integer pretendWood = 0
     integer foodUsed = 0
@@ -12,9 +85,28 @@ globals
 	
 	integer unitFoodCap = 0
 
+
+    boolean configDoDebugLogging = true
+
     constant integer MAX_TOWN_COUNT = 12
  
 endglobals
+
+//***StartSharedApi***
+function PCJA_B2I takes boolean b returns integer
+    if b then 
+        return 1
+    endif
+    return 0
+endfunction
+
+function PCJA_I2B takes integer i returns boolean
+    if i == 1 then 
+        return true
+    endif
+    return false
+endfunction
+//***EndSharedApi***
 
 function IMax takes integer x, integer y returns integer
     if (x > y) then
@@ -169,6 +261,9 @@ function DebugPlayerColorB takes playercolor c returns integer
 endfunction
 function Msg takes string msg returns nothing
     local integer i = 0
+    if (not configDoDebugLogging) then
+        return
+    endif
     set msg = DebugPlayerName(GetPlayerColor(ai_player)) + ": " + msg
     loop
         call DisplayTimedTextToPlayer(Player(i),0,0,30,msg)
@@ -254,7 +349,7 @@ function HarvestPriorities takes nothing returns nothing
     local integer i = 0
 
     call HarvestGold( currentTown, 3 )
-    call HarvestWood( currentTown, 1 + insaneModifier)
+    call HarvestWood( currentTown, 1 )
     call HarvestGold( currentTown, 2 )
     loop
         exitwhen i > MAX_TOWN_COUNT
@@ -552,19 +647,84 @@ function AttackAssignment takes nothing returns nothing
 endfunction
 
 //===========================================================================
-function SetConfigType takes integer configType, boolean value returns nothing
+function HandleConfigType takes nothing returns nothing
+    local integer configType = GetLastCommand()
+    local boolean data = PCJA_I2B(GetLastData())
+    call PopLastCommand()
 
+    if configType == PCJA_CONFIG_TYPE_AI_IS_CAMPAIGN then
+        if (data) then
+            call SetCampaignAI()
+            call Msg( "PCJA_CONFIG_TYPE_AI_IS_CAMPAIGN - " + PCJA_B2S(data) )
+        else
+            call SetMeleeAI()
+            call Msg( "PCJA_CONFIG_TYPE_AI_IS_CAMPAIGN - " + PCJA_B2S(data) )
+        endif
+    elseif configType == PCJA_CONFIG_TYPE_DEFEND_PLAYERS then
+        call SetDefendPlayer( data )
+        call Msg( "PCJA_CONFIG_TYPE_DEFEND_PLAYERS - " + PCJA_B2S(data) )
+    elseif configType == PCJA_CONFIG_TYPE_RANDOM_PATHS then
+        call SetRandomPaths( data )
+        call Msg( "PCJA_CONFIG_TYPE_RANDOM_PATHS - " + PCJA_B2S(data) )
+    elseif configType == PCJA_CONFIG_TYPE_TARGET_HEROES then
+        call SetTargetHeroes( data )
+        call Msg( "PCJA_CONFIG_TYPE_TARGET_HEROES - " + PCJA_B2S(data) )
+    elseif configType == PCJA_CONFIG_TYPE_PEONS_REPAIR then
+        call SetPeonsRepair( data )
+        call Msg( "PCJA_CONFIG_TYPE_PEONS_REPAIR - " + PCJA_B2S(data) )
+    elseif configType == PCJA_CONFIG_TYPE_HEROES_FLEE then
+        call SetHeroesFlee( data )
+        call Msg( "PCJA_CONFIG_TYPE_HEROES_FLEE - " + PCJA_B2S(data) )
+    elseif configType == PCJA_CONFIG_TYPE_HEROES_BUY_ITEMS then
+        call SetHeroesBuyItems( data )
+        call Msg( "PCJA_CONFIG_TYPE_HEROES_BUY_ITEMS - " + PCJA_B2S(data) )
+    elseif configType == PCJA_CONFIG_TYPE_UNITS_FLEE then
+        call SetUnitsFlee( data )
+        call Msg( "PCJA_CONFIG_TYPE_UNITS_FLEE - " + PCJA_B2S(data) )
+    elseif configType == PCJA_CONFIG_TYPE_GROUPS_FLEE then
+        call SetGroupsFlee( data )
+        call Msg( "PCJA_CONFIG_TYPE_GROUPS_FLEE - " + PCJA_B2S(data) )
+    elseif configType == PCJA_CONFIG_TYPE_WATCH_MEGA_TARGETS then
+        call SetWatchMegaTargets( data )
+        call Msg( "PCJA_CONFIG_TYPE_WATCH_MEGA_TARGETS - " + PCJA_B2S(data) )
+    elseif configType == PCJA_CONFIG_TYPE_IGNORE_INJURED then
+        call SetIgnoreInjured( data )
+        call Msg( "PCJA_CONFIG_TYPE_IGNORE_INJURED - " + PCJA_B2S(data) )
+    elseif configType == PCJA_CONFIG_TYPE_HEROES_TAKE_ITEMS then
+        call SetHeroesTakeItems( data )
+        call Msg( "PCJA_CONFIG_TYPE_HEROES_TAKE_ITEMS - " + PCJA_B2S(data) )
+    elseif configType == PCJA_CONFIG_TYPE_SLOW_CHOPPING then
+        call SetSlowChopping( data )
+        call Msg( "PCJA_CONFIG_TYPE_SLOW_CHOPPING - " + PCJA_B2S(data) )
+    elseif configType == PCJA_CONFIG_TYPE_SMART_ARTILLERY then
+        call SetSmartArtillery( data )
+        call Msg( "PCJA_CONFIG_TYPE_SMART_ARTILLERY - " + PCJA_B2S(data) )
+    elseif configType == PCJA_CONFIG_TYPE_GROUP_TIMED_LIFE then
+        call GroupTimedLife( data )
+        call Msg( "PCJA_CONFIG_TYPE_GROUP_TIMED_LIFE - " + PCJA_B2S(data) )
+    endif
 endfunction
 
 
 function HandleCommand takes integer command, integer commandType returns nothing
-    if commandType == PCJA_COMMAND_TYPE_SET_CONFIG then
-        call Msg("PCJA_COMMAND_TYPE_SET_CONFIG")
+    local integer configType
+    local boolean data
 
+    if commandType == PCJA_COMMAND_TYPE_SET_CONFIG then
+        call HandleConfigType()
     elseif command == 10001 then
-        call Msg("PCJA_COMMAND_END_TYPE")
+        call Msg("PCJA_COMMAND_END_TYPE too early?")
     else
-        call Msg("OTHER")
+        call Msg("Unknown PCJA_COMMAND...")
+    endif
+
+    set configType = GetLastCommand()
+    set data = PCJA_I2B(GetLastData())
+    call PopLastCommand()
+    if configType != PCJA_COMMAND_END_TYPE then
+        call Msg("Recieved a command that is not PCJA_COMMAND_END_TYPE, data misshandled.")
+    else
+        call Msg("PCJA_COMMAND_END_TYPE recieved successfully")
     endif
 endfunction
 
@@ -576,10 +736,11 @@ function NewerBuildLoop takes nothing returns nothing
     call StaggerSleep(0, 1)
     loop
         call OneBuildLoop()
-        call Msg("NewerBuildLoop")
+        //call Msg("NewerBuildLoop")
 
         loop
-            exitwhen CommandsWaiting() <= 0
+            exitwhen CommandsWaiting() == 0
+            call Msg("Start command parse")
             set command = GetLastCommand()
             set commandType = GetLastData()
             call PopLastCommand()
@@ -588,6 +749,7 @@ function NewerBuildLoop takes nothing returns nothing
             else
                 call Msg("AI recieved command other than PCJA_COMMAND_START_TYPE")
             endif
+            call Msg("End command parse")
         endloop
 
         call Sleep(0.5)
@@ -623,8 +785,8 @@ function main takes nothing returns nothing
 
     call Msg("Start AI")
 
-    call StartThread( function WorkerAssignment )
-    call StartThread( function AttackAssignment )
+    //call StartThread( function WorkerAssignment )
+    //call StartThread( function AttackAssignment )
     call NewerBuildLoop() //Main Loop
 
     call Msg("AI Main Thread Dead")

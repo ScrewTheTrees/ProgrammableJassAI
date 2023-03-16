@@ -1,13 +1,12 @@
 // Globals shared with the AI script to handle communication
 
 globals
-    //***StartGlobalInsert***
+    //***StartSharedGlobals***
     integer PCJA_COMMAND_START_TYPE = 10000
     integer PCJA_COMMAND_END_TYPE = 10001
 
     integer PCJA_COMMAND_TYPE_SET_CONFIG = 10002
     integer PCJA_COMMAND_TYPE_SET_HARVEST_GROUP = 10003
-
 
 
     //if true, is campaign AI, otherwise melee
@@ -73,6 +72,5 @@ globals
     //Default: true
     integer PCJA_CONFIG_TYPE_GROUP_TIMED_LIFE = 20014
 
-
-    //***EndGlobalInsert***
+    //***EndSharedGlobals***
 endglobals
