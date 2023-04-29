@@ -1,19 +1,15 @@
 globals
-    // User-defined
-real udg_PCJA_TargetX= 0
-real udg_PCJA_TargetY= 0
-
     // Generated
 trigger gg_trg_Melee_Initialization= null
 trigger gg_trg_PCJAFramework= null
-trigger gg_trg_PCJASendAttackGroundCommand= null
-trigger gg_trg_PCJASetConfig= null
     //***StartSharedGlobals***
 integer PCJA_COMMAND_START_TYPE= 10000
-integer PCJA_COMMAND_END_TYPE= 10001
+integer PCJA_COMMAND_CONTENT_TYPE= 10001
+integer PCJA_COMMAND_END_TYPE= 10002
 
-integer PCJA_COMMAND_TYPE_SET_CONFIG= 10002
-integer PCJA_COMMAND_TYPE_SET_HARVEST_GROUP= 10003
+integer PCJA_COMMAND_TYPE_SET_CONFIG= 10010
+integer PCJA_COMMAND_TYPE_SET_HARVEST_GROUP= 10011
+integer PCJA_COMMAND_TYPE_TEST= 10012
 
 
     //if true, is campaign AI, otherwise melee
@@ -33,14 +29,15 @@ integer PCJA_CONFIG_TYPE_RANDOM_PATHS= 20002
 integer PCJA_CONFIG_TYPE_TARGET_HEROES= 20003
 
     //Repair damaged buildings, otherwise they will let them be damaged.
+    //Blizzard standard is to have this disabled on easy
     //Default: true
 integer PCJA_CONFIG_TYPE_PEONS_REPAIR= 20004
 
-    //Causes the hero to try to keep itself alive during combat.
+    //Causes the hero to try to keep itself alive during combat by running away.
     //Default: false
 integer PCJA_CONFIG_TYPE_HEROES_FLEE= 20005
 
-    //Causes the hero to try to keep itself alive during combat.
+    //Causes the hero to buy items if they get close enough to such buildings.
     //Default: false
 integer PCJA_CONFIG_TYPE_HEROES_BUY_ITEMS= 20006
 
@@ -71,11 +68,12 @@ integer PCJA_CONFIG_TYPE_HEROES_TAKE_ITEMS= 20011
 integer PCJA_CONFIG_TYPE_SLOW_CHOPPING= 20012
 
     //Artillery targets buildings or casters that are weak to their siege damage.
+    //Blizzard standard is to use this on Hard difficulty.
     //Default: true
 integer PCJA_CONFIG_TYPE_SMART_ARTILLERY= 20013
 
     //Summoned units are grouped into the ai players assault force.
-    //Otherwise they just stand AFK where they were summoned.
+    //Otherwise they just stand AFK where they were summoned until they die.
     //Default: true
 integer PCJA_CONFIG_TYPE_GROUP_TIMED_LIFE= 20014
 
@@ -105,8 +103,6 @@ endglobals
 
 
 function InitGlobals takes nothing returns nothing
-    set udg_PCJA_TargetX=0
-    set udg_PCJA_TargetY=0
 endfunction
 
 //***************************************************************************
@@ -1620,6 +1616,7 @@ endfunction
 
 
 //***StartSharedApi***
+
 function PCJA_B2I takes boolean b returns integer
     if b then
         return 1
@@ -1633,13 +1630,29 @@ function PCJA_I2B takes integer i returns boolean
     endif
     return false
 endfunction
+
+function PCJA_B2S takes boolean b returns string
+    if ( b ) then
+        return "true"
+    endif
+    return "false"
+endfunction
+
 //***EndSharedApi***
 
 function PCJA_SetConfig takes player aiPlayer,integer configType,boolean value returns nothing
-    //Send AI Command
     call CommandAI(aiPlayer, PCJA_COMMAND_END_TYPE, PCJA_COMMAND_TYPE_SET_CONFIG)
     call CommandAI(aiPlayer, configType, PCJA_B2I(value))
     call CommandAI(aiPlayer, PCJA_COMMAND_START_TYPE, PCJA_COMMAND_TYPE_SET_CONFIG)
+endfunction
+
+function PCJA_Test takes player aiPlayer,integer byte1,integer byte2,integer byte3,integer byte4 returns nothing
+    call CommandAI(aiPlayer, PCJA_COMMAND_END_TYPE, PCJA_COMMAND_TYPE_TEST)
+    call CommandAI(aiPlayer, PCJA_COMMAND_CONTENT_TYPE, byte1)
+    call CommandAI(aiPlayer, PCJA_COMMAND_CONTENT_TYPE, byte2)
+    call CommandAI(aiPlayer, PCJA_COMMAND_CONTENT_TYPE, byte3)
+    call CommandAI(aiPlayer, PCJA_COMMAND_CONTENT_TYPE, byte4)
+    call CommandAI(aiPlayer, PCJA_COMMAND_START_TYPE, PCJA_COMMAND_TYPE_TEST)
 endfunction
 
 
@@ -1652,6 +1665,9 @@ function PCJA_DryRun takes nothing returns nothing
     call PCJA_SetConfig(Player(1) , PCJA_CONFIG_TYPE_RANDOM_PATHS , true)
     call PCJA_SetConfig(Player(1) , PCJA_CONFIG_TYPE_HEROES_BUY_ITEMS , false)
     call PCJA_SetConfig(Player(1) , PCJA_CONFIG_TYPE_GROUPS_FLEE , false)
+    call TriggerSleepAction(1.50)
+    call PCJA_Test(Player(1) , 1 , 32 , 0 , 69)
+    call PCJA_Test(Player(1) , 255 , 245 , 3 , 420)
 endfunction
 
 // END IMPORT OF E:\dev\repos\ProgrammableJassAI\ProgrammableCampaignJassAIFramework.j

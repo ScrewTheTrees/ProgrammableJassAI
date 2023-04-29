@@ -3,6 +3,7 @@
     "author": "Fredrik Grimmenhag (ScrewTheTrees)",
     "version": "1.0.0",
     "description": "Quality package.",
+    
     "scripts": {
         "buildStuff": "ts-node bin/build",
         "launchStuff": "ts-node bin/Run",

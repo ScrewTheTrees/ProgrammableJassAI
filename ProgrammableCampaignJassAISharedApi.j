@@ -1,6 +1,7 @@
 // Shared functions for both AIscript and Jass script
 
 //***StartSharedApi***
+
 function PCJA_B2I takes boolean b returns integer
     if b then 
         return 1
@@ -21,4 +22,5 @@ function PCJA_B2S takes boolean b returns string
     endif
     return "false"
 endfunction
+
 //***EndSharedApi***

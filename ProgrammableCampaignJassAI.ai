@@ -6,10 +6,12 @@
 globals
     //***StartSharedGlobals***
     integer PCJA_COMMAND_START_TYPE = 10000
-    integer PCJA_COMMAND_END_TYPE = 10001
+    integer PCJA_COMMAND_CONTENT_TYPE = 10001
+    integer PCJA_COMMAND_END_TYPE = 10002
 
-    integer PCJA_COMMAND_TYPE_SET_CONFIG = 10002
-    integer PCJA_COMMAND_TYPE_SET_HARVEST_GROUP = 10003
+    integer PCJA_COMMAND_TYPE_SET_CONFIG = 10010
+    integer PCJA_COMMAND_TYPE_SET_HARVEST_GROUP = 10011
+    integer PCJA_COMMAND_TYPE_TEST = 10012
 
 
     //if true, is campaign AI, otherwise melee
@@ -29,14 +31,15 @@ globals
     integer PCJA_CONFIG_TYPE_TARGET_HEROES = 20003
 
     //Repair damaged buildings, otherwise they will let them be damaged.
+    //Blizzard standard is to have this disabled on easy
     //Default: true
     integer PCJA_CONFIG_TYPE_PEONS_REPAIR = 20004
 
-    //Causes the hero to try to keep itself alive during combat.
+    //Causes the hero to try to keep itself alive during combat by running away.
     //Default: false
     integer PCJA_CONFIG_TYPE_HEROES_FLEE = 20005
 
-    //Causes the hero to try to keep itself alive during combat.
+    //Causes the hero to buy items if they get close enough to such buildings.
     //Default: false
     integer PCJA_CONFIG_TYPE_HEROES_BUY_ITEMS = 20006
 
@@ -67,11 +70,12 @@ globals
     integer PCJA_CONFIG_TYPE_SLOW_CHOPPING = 20012
 
     //Artillery targets buildings or casters that are weak to their siege damage.
+    //Blizzard standard is to use this on Hard difficulty.
     //Default: true
     integer PCJA_CONFIG_TYPE_SMART_ARTILLERY = 20013
 
     //Summoned units are grouped into the ai players assault force.
-    //Otherwise they just stand AFK where they were summoned.
+    //Otherwise they just stand AFK where they were summoned until they die.
     //Default: true
     integer PCJA_CONFIG_TYPE_GROUP_TIMED_LIFE = 20014
 
@@ -92,7 +96,25 @@ globals
  
 endglobals
 
+//***StartPolyfill***
+function ModuloInteger takes integer dividend, integer divisor returns integer
+    local integer modulus = dividend - (dividend / divisor) * divisor
+    if (modulus < 0) then
+        set modulus = modulus + divisor
+    endif
+    return modulus
+endfunction
+function ModuloReal takes real dividend, real divisor returns real
+    local real modulus = dividend - I2R(R2I(dividend / divisor)) * divisor
+    if (modulus < 0) then
+        set modulus = modulus + divisor
+    endif
+    return modulus
+endfunction
+//***EndPolyfill***
+
 //***StartSharedApi***
+
 function PCJA_B2I takes boolean b returns integer
     if b then 
         return 1
@@ -106,6 +128,14 @@ function PCJA_I2B takes integer i returns boolean
     endif
     return false
 endfunction
+
+function PCJA_B2S takes boolean b returns string
+    if (b) then
+        return "true"
+    endif
+    return "false"
+endfunction
+
 //***EndSharedApi***
 
 function IMax takes integer x, integer y returns integer
@@ -120,30 +150,47 @@ function IMin takes integer x, integer y returns integer
     endif
     return y
 endfunction
-function B2S takes boolean b returns string
-    if (b) then
-        return "true"
+
+
+function PCJA_IC2S takes integer i returns string
+    if i == 0 then
+        return "0"
+    elseif i == 1 then
+        return "1"
+    elseif i == 2 then
+        return "2"
+    elseif i == 3 then
+        return "3"
+    elseif i == 4 then
+        return "4"
+    elseif i == 5 then
+        return "5"
+    elseif i == 6 then
+        return "6"
+    elseif i == 7 then
+        return "7"
+    elseif i == 8 then
+        return "8"
+    elseif i == 9 then
+        return "9"
     endif
-    return "false"
+    return "-"
 endfunction
-function ModuloInteger takes integer dividend, integer divisor returns integer
-    local integer modulus = dividend - (dividend / divisor) * divisor
+function PCJA_I2S takes integer i returns string
+    local integer div = 10
+    local integer compare = ModuloInteger(i, 10)
+    local string result = PCJA_IC2S(compare)
 
-    if (modulus < 0) then
-        set modulus = modulus + divisor
-    endif
+    loop
+        exitwhen div >= i
+        set compare = ModuloInteger(i / div, 10)
+        set result = PCJA_IC2S(compare) + result
+        set div = div * 10
+    endloop
 
-    return modulus
+    return result
 endfunction
-function ModuloReal takes real dividend, real divisor returns real
-    local real modulus = dividend - I2R(R2I(dividend / divisor)) * divisor
 
-    if (modulus < 0) then
-        set modulus = modulus + divisor
-    endif
-
-    return modulus
-endfunction
 
 
 function IBetween takes integer value, integer x, integer y returns boolean
@@ -163,7 +210,7 @@ function HasHero takes nothing returns boolean
 endfunction
 
 
-function GetQueueWoodValue takes integer unitId,integer quantity returns integer
+function GetQueueWoodValue takes integer unitId, integer quantity returns integer
     local integer value = 0
     local integer needed = quantity - GetUnitCount(unitId)
     if (needed > 0) then
@@ -171,7 +218,7 @@ function GetQueueWoodValue takes integer unitId,integer quantity returns integer
     endif
     return value
 endfunction
-function GetQueueGoldValue takes integer unitId,integer quantity returns integer
+function GetQueueGoldValue takes integer unitId, integer quantity returns integer
     local integer value = 0
     local integer needed = quantity - GetUnitCount(unitId)
     if (needed > 0) then
@@ -181,17 +228,17 @@ function GetQueueGoldValue takes integer unitId,integer quantity returns integer
 endfunction
 
 function GetEnemyCount takes player whichPlayer returns integer
-    local integer    playerIndex = 0
-    local integer    count = 0
-    local player     indexPlayer
+    local integer playerIndex = 0
+    local integer count = 0
+    local player indexPlayer
 
     loop
         set indexPlayer = Player(playerIndex)
 
         if whichPlayer != indexPlayer then
-            if not GetPlayerAlliance(whichPlayer,indexPlayer,ALLIANCE_PASSIVE) then
-                if not GetPlayerAlliance(indexPlayer,whichPlayer,ALLIANCE_PASSIVE) then
-                    if GetPlayerStructureCount(indexPlayer,true) > 0 then
+            if not GetPlayerAlliance(whichPlayer, indexPlayer, ALLIANCE_PASSIVE) then
+                if not GetPlayerAlliance(indexPlayer, whichPlayer, ALLIANCE_PASSIVE) then
+                    if GetPlayerStructureCount(indexPlayer, true) > 0 then
                         set count = count + 1
                     endif
                 endif
@@ -251,9 +298,9 @@ function DebugPlayerColorB takes playercolor c returns integer
     if (c == PLAYER_COLOR_RED) then
         return 0
     elseif (c == PLAYER_COLOR_BLUE) then
-        return 255
+        return 254
     elseif (c == PLAYER_COLOR_CYAN) then
-        return 255
+        return 254
     elseif (c == PLAYER_COLOR_PURPLE) then
         return 128
     endif
@@ -266,7 +313,7 @@ function Msg takes string msg returns nothing
     endif
     set msg = DebugPlayerName(GetPlayerColor(ai_player)) + ": " + msg
     loop
-        call DisplayTimedTextToPlayer(Player(i),0,0,30,msg)
+        call DisplayTimedTextToPlayer(Player(i), 0, 0, 30, msg)
         set i = i + 1
         exitwhen i == 3
     endloop
@@ -277,7 +324,7 @@ function Ping takes real x, real y returns nothing
     local integer g = DebugPlayerColorG(GetPlayerColor(ai_player))
     local integer b = DebugPlayerColorB(GetPlayerColor(ai_player))
     loop
-        call PingMinimapEx(x, y, 1, r, g ,b, false)
+        call PingMinimapEx(x, y, 1, r, g , b, false)
         set i = i + 1
         exitwhen i == 3
     endloop
@@ -292,7 +339,7 @@ function UpdateQueueVariables takes nothing returns nothing
 endfunction
 
 function QueueUnit takes integer unitid, integer quantity returns boolean
-    return StartUnit(quantity, unitid, -1)
+    return StartUnit(quantity, unitid, - 1)
 endfunction
 function QueueBuilding takes integer unitid, integer quantity, integer town returns boolean
     return StartUnit(quantity, unitid, town)
@@ -301,12 +348,12 @@ function QueueUpgrade takes integer upgrade, integer level returns boolean
     if (GetUpgradeLevel(upgrade) < level) then
         set level = GetUpgradeLevel(upgrade) + 1
     endif
-    return StartUpgrade(level,upgrade)
+    return StartUpgrade(level, upgrade)
 endfunction
 function QueueBuildingAllActiveTowns takes integer unitid, integer quantity returns boolean
     local integer i = 0
     local boolean retvar = false
-     loop
+    loop
         exitwhen i > MAX_TOWN_COUNT
         if (TownHasMine(i) and TownHasHall(i)) then
             call StartUnit( unitid, quantity, i )
@@ -320,7 +367,7 @@ endfunction
 function QueueBuildingAllInactiveMines takes integer unitid, integer quantity returns boolean
     local integer i = 0
     local boolean retvar = false
-     loop
+    loop
         exitwhen i > MAX_TOWN_COUNT
         if (not TownHasMine(i) and TownHasHall(i) and i != GetNextExpansion()) then
             call StartUnit( unitid, quantity, i )
@@ -365,11 +412,11 @@ endfunction
 // Handles the necessary variables for expansion.
 function StartExpansionNew takes nothing returns boolean
     local integer town
-    local unit    peon
+    local unit peon
     local integer gold_cost
 
     set town = GetNextExpansion()
-    if town == -1 then
+    if town == - 1 then
         return true
     endif
 
@@ -466,7 +513,7 @@ function AttackMoveKillANew takes unit target returns nothing
         exitwhen CaptainReadinessHP() <= 25
 
         exitwhen not UnitAlive(target)
-        exitwhen UnitInvis(target) and not IsUnitDetected(target,ai_player)
+        exitwhen UnitInvis(target) and not IsUnitDetected(target, ai_player)
 
         set iterator = iterator + 1
         if (ModuloInteger(iterator, 5) == 0) then
@@ -493,7 +540,7 @@ function AttackMoveKillANew takes unit target returns nothing
 
         call Sleep(1)
 
-        if sleep_seconds < -40 then
+        if sleep_seconds < - 40 then
             if CaptainInCombat(true) then
                 set sleep_seconds = sleep_seconds + 5
             else
@@ -585,7 +632,7 @@ function ProcessAttack takes nothing returns nothing
 
     loop
         exitwhen (CaptainReadinessHP() >= 50)
-        call FormGroup(1,true)
+        call FormGroup(1, true)
         call Sleep(5)
     endloop
 
@@ -594,7 +641,7 @@ function ProcessAttack takes nothing returns nothing
         set common = GetAllianceTarget()
         if common != null then
             call Msg("Coordinating with allies.")
-            call FormGroup(1,true)
+            call FormGroup(1, true)
             call AttackMoveKillANew(common)
             call SetAllianceTarget(null)
             call Sleep(5) //We are waiting for another player.
@@ -608,7 +655,7 @@ function ProcessAttack takes nothing returns nothing
         if expansion_creep != null then
             call Msg("Found expansion_creep")
             call SetAllianceTarget(expansion_creep)
-            call FormGroup(1,true)
+            call FormGroup(1, true)
             call AttackMoveKillANew(expansion_creep )
             return
         endif
@@ -637,7 +684,7 @@ function ProcessAttack takes nothing returns nothing
 endfunction
 
 function AttackAssignment takes nothing returns nothing
-    call StaggerSleep(1,3)
+    call StaggerSleep(1, 3)
     loop
         call Msg("AttackAssignment")
         call RemoveInjuries(  )
@@ -651,6 +698,8 @@ function HandleConfigType takes nothing returns nothing
     local integer configType = GetLastCommand()
     local boolean data = PCJA_I2B(GetLastData())
     call PopLastCommand()
+
+    call Msg("configType: " + PCJA_I2S(configType))
 
     if configType == PCJA_CONFIG_TYPE_AI_IS_CAMPAIGN then
         if (data) then
@@ -705,27 +754,35 @@ function HandleConfigType takes nothing returns nothing
     endif
 endfunction
 
+function PopAndGetLastData takes nothing returns integer
+    local integer data = GetLastData()
+    call PopLastCommand()
+    return data
+endfunction
 
 function HandleCommand takes integer command, integer commandType returns nothing
     local integer configType
-    local boolean data
+    local integer data
 
     if commandType == PCJA_COMMAND_TYPE_SET_CONFIG then
         call HandleConfigType()
+    elseif commandType == PCJA_COMMAND_TYPE_TEST then
+        call Msg(PCJA_I2S(PopAndGetLastData()) + ", " + PCJA_I2S(PopAndGetLastData()) + ", " + PCJA_I2S(PopAndGetLastData()) + ", " + PCJA_I2S(PopAndGetLastData()))
     elseif command == 10001 then
         call Msg("PCJA_COMMAND_END_TYPE too early?")
     else
-        call Msg("Unknown PCJA_COMMAND...")
+        call Msg("Unknown PCJA_COMMAND: " + PCJA_I2S(commandType))
     endif
 
     set configType = GetLastCommand()
-    set data = PCJA_I2B(GetLastData())
-    call PopLastCommand()
+    set data = GetLastData()
     if configType != PCJA_COMMAND_END_TYPE then
-        call Msg("Recieved a command that is not PCJA_COMMAND_END_TYPE, data misshandled.")
-    else
-        call Msg("PCJA_COMMAND_END_TYPE recieved successfully")
+        call Msg("Recieved not PCJA_COMMAND_END_TYPE, when expected.")
+        call Msg("Actual Command: " + PCJA_I2S(commandType) + ", Actual data: " + PCJA_I2S(data))
+    elseif CommandsWaiting() == 0 then
+        call Msg("Ran out of buffer when end was expected.")
     endif
+    call PopLastCommand()
 endfunction
 
 function NewerBuildLoop takes nothing returns nothing

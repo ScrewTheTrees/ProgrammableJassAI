@@ -1,3 +1,4 @@
+import { ConvertToLua } from "./ConvertToLua";
 import { buildConfig, buildLogger } from "./Utils";
 
 const fs = require("fs-extra");
@@ -24,33 +25,29 @@ function build() {
         let endIndex = source.lastIndexOf(endTag);
         if (startIndex < 0 || endIndex < 0) {
             logger.error(debugNameSource + " is missing tags for indexing.");
-            logger.error("startIndex: " + startIndex);
-            logger.error("endIndex: " + endIndex);
+            logger.error(startTag + ", startIndex: " + startIndex);
+            logger.error(endTag + ", endIndex: " + endIndex);
             throw new Error(debugNameSource + " is missing tags for indexing.");
         }
         return source.substring(startIndex, endIndex);
     }
-
-    function injectTagShitFromXIntoY(source: string, target: string, startTag: string, endTag: string,
-        debugNameSource: string = "MISSING", targetNameSource: string = "MISSING") {
-
+    function injectTagShitFromXIntoY(source: string, target: string, startTag: string, endTag: string, debugNameSource: string = "MISSING", targetNameSource: string = "MISSING") {
         let sourceSubstring = findSubstringByTag(source, startTag, endTag, debugNameSource);
         let targetSubstring = findSubstringByTag(target, startTag, endTag, targetNameSource);
-
-        return targetSubstring.replace(targetSubstring, sourceSubstring)
+        return target.replace(targetSubstring, sourceSubstring)
     }
+
     framework = injectTagShitFromXIntoY(globals,
         framework,
         "//***StartSharedGlobals***",
         "//***EndSharedGlobals***",
         "ProgrammableCampaignJassAISharedGlobals.j",
         "ProgrammableCampaignJassAIFramework.j");
-
     framework = injectTagShitFromXIntoY(sharedApi,
         framework,
         "//***StartSharedApi***",
         "//***EndSharedApi***",
-        "ProgrammableCampaignJassAISharedGlobals.j",
+        "ProgrammableCampaignJassAISharedApi.j",
         "ProgrammableCampaignJassAIFramework.j");
 
     aiFile = injectTagShitFromXIntoY(globals,
@@ -59,16 +56,16 @@ function build() {
         "//***EndSharedGlobals***",
         "ProgrammableCampaignJassAISharedGlobals.j",
         "ProgrammableCampaignJassAI.ai");
-
     aiFile = injectTagShitFromXIntoY(sharedApi,
         aiFile,
         "//***StartSharedApi***",
         "//***EndSharedApi***",
-        "ProgrammableCampaignJassAISharedGlobals.j",
+        "ProgrammableCampaignJassAISharedApi.j",
         "ProgrammableCampaignJassAI.ai");
 
 
     fs.writeFileSync(".\\ProgrammableCampaignJassAIFramework.j", framework);
+    fs.writeFileSync(".\\ProgrammableCampaignJassAIFramework.lua", ConvertToLua(framework));
     fs.writeFileSync(".\\ProgrammableCampaignJassAI.ai", aiFile);
 
 

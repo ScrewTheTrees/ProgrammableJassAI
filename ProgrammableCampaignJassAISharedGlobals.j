@@ -3,10 +3,12 @@
 globals
     //***StartSharedGlobals***
     integer PCJA_COMMAND_START_TYPE = 10000
-    integer PCJA_COMMAND_END_TYPE = 10001
+    integer PCJA_COMMAND_CONTENT_TYPE = 10001
+    integer PCJA_COMMAND_END_TYPE = 10002
 
-    integer PCJA_COMMAND_TYPE_SET_CONFIG = 10002
-    integer PCJA_COMMAND_TYPE_SET_HARVEST_GROUP = 10003
+    integer PCJA_COMMAND_TYPE_SET_CONFIG = 10010
+    integer PCJA_COMMAND_TYPE_SET_HARVEST_GROUP = 10011
+    integer PCJA_COMMAND_TYPE_TEST = 10012
 
 
     //if true, is campaign AI, otherwise melee
@@ -26,14 +28,15 @@ globals
     integer PCJA_CONFIG_TYPE_TARGET_HEROES = 20003
 
     //Repair damaged buildings, otherwise they will let them be damaged.
+    //Blizzard standard is to have this disabled on easy
     //Default: true
     integer PCJA_CONFIG_TYPE_PEONS_REPAIR = 20004
 
-    //Causes the hero to try to keep itself alive during combat.
+    //Causes the hero to try to keep itself alive during combat by running away.
     //Default: false
     integer PCJA_CONFIG_TYPE_HEROES_FLEE = 20005
 
-    //Causes the hero to try to keep itself alive during combat.
+    //Causes the hero to buy items if they get close enough to such buildings.
     //Default: false
     integer PCJA_CONFIG_TYPE_HEROES_BUY_ITEMS = 20006
 
@@ -64,11 +67,12 @@ globals
     integer PCJA_CONFIG_TYPE_SLOW_CHOPPING = 20012
 
     //Artillery targets buildings or casters that are weak to their siege damage.
+    //Blizzard standard is to use this on Hard difficulty.
     //Default: true
     integer PCJA_CONFIG_TYPE_SMART_ARTILLERY = 20013
 
     //Summoned units are grouped into the ai players assault force.
-    //Otherwise they just stand AFK where they were summoned.
+    //Otherwise they just stand AFK where they were summoned until they die.
     //Default: true
     integer PCJA_CONFIG_TYPE_GROUP_TIMED_LIFE = 20014
 
